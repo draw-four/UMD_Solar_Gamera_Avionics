@@ -2,8 +2,8 @@
 BLDC controller based on keyboard input
 */
 
-#include <Servo.h>
-// #include "LowPower.h"
+#include <Servo.h> // <--------------------------- possibly a missing file? I would like to see it
+// #include "LowPower.h" <------------------------ may be relevant
 
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
@@ -92,7 +92,7 @@ void loop() {
 
     // individual motor control => increase
     // blue
-    case 'w':
+    case 'w': // <----------------------------------------- wasd may be refactored to use joystick instead
       allMotors[0].power += 5;
       allMotors[0].power >= MAX_SIGNAL ? allMotors[0].power = MAX_SIGNAL : allMotors[0].power = allMotors[0].power; // saturate
       displayAllMotors();
