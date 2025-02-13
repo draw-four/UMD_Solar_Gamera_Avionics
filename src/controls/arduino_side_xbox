@@ -1,0 +1,77 @@
+/* Modified from https://justindra.com/blog/2018-05-20-arduino-xbox-one/ code. */
+
+/******* CODE BLOCK 1 *******/
+/*
+  Turns on the led using serial
+ */
+
+// Initialize the LEDs
+int blue = 9;
+int green = 10;
+int red = 11;
+
+// Initialize the integers to keep the values of the leds
+int blue_value;
+int red_value;
+int green_value;
+
+// the setup routine runs once when you press reset:
+void setup() {
+  // initialize the pin as an output.
+  pinMode(blue, OUTPUT);
+  pinMode(red, OUTPUT);
+  pinMode(green, OUTPUT);
+  //   Start serial
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Wait until we receive the 0xFF Character
+  if (Serial.read() == 0xFF) {
+    // Wait until we have 3 bytes available
+    while (!(Serial.available() > 3)) Serial.println("wait");
+
+    blue_value = Serial.read();
+    red_value = Serial.read();
+    green_value = Serial.read();
+
+    // Echo back what we just received for debugging
+    char sendBuffer[3];
+    sprintf(sendBuffer, "%d%d%d", blue_value, red_value, green_value);
+    Serial.println(sendBuffer);
+
+    // Write the LED Values to show the colours
+    analogWrite(blue, blue_value);
+    analogWrite(green, green_value);
+    analogWrite(red, red_value);
+  }
+}
+
+/******* CODE BLOCK 2 *******/
+const port = new SerialPort(
+    '/dev/ttyACM0',
+    { baudRate: 9600 }
+);
+const buffer = data.buffer();
+port.write(buffer, function (err) {
+    if (err) return console.log('Error on write: ', err.message);
+    console.log('Data sent successfully');
+});
+
+/******* CODE BLOCK 3 *******/
+/*
+DOES NOT HAVE JOYSTICK CAPABILITY, MAY HAVE TO OUTPUT TO SERIAL PORT TO MEASURE
+*/
+function callbackFromJoystick(button, value) {
+    if (button === 'blue') {
+        proxy.blue = value;
+    } else if (button === 'red') {
+        proxy.red = value;
+    } else if (button === 'green') {
+        proxy.green = value;
+    }
+}
+setInterval(function() {
+    const buffer = data.buffer();
+    port.write(buffer, ... );
+}, 50);
