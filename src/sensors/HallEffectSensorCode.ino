@@ -15,7 +15,7 @@ void count() {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200); // adjusted baud rate to match that of the arduino_side.ino
   pinMode(hallPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(hallPin), count, FALLING);
 }
