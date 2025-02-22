@@ -2,8 +2,10 @@
 BLDC controller based on keyboard input
 */
 
-#include <Servo.h> // <--------------------------- possibly a missing file? I would like to see it
-// #include "LowPower.h" <------------------------ may be relevant
+/******* MOTOR CONTROL VARIABLES *******/
+
+#include <Servo.h>
+// #include "LowPower.h" // may be relevant? <------------------------------------------------------------------------------
 
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
@@ -26,6 +28,79 @@ void calibrate();
 void quit();
 void displayAllMotors();
 
+/*************************************/
+
+/******* HALL SENSOR VARIABLES *******/
+
+const int hallPin0 = 2;
+// are we connecting four hall sensors to the same board? do we have enough analog ports on the nano for that? <----------------------
+const int hallPin1 = 3;
+const int hallPin2 = 4;
+const int hallPin3 = 5;
+const int maxCnt = 1;
+
+volatile int cnt0 = 0; // volatile because it depends on user input and measurement delays
+volatile int cnt1 = 0;
+volatile int cnt2 = 0;
+volatile int cnt3 = 0;
+
+int INDEX = 0;
+float VALUE = 0;
+float SUM = 0;
+const int WINDOW_SIZE = 3;
+float READINGS[WINDOW_SIZE];
+int AVERAGED = 0;
+
+/*************************************/
+
+/******* HALL SENSOR FUNCTIONS *******/
+// switch statements are fast but if the sensor seems to lag maybe make four separate functions instead? <--------------------------------------
+void count(int motor_num) {
+  switch (motor_num) {
+    case 0: cnt0++; break;
+    case 1: cnt1++; break;
+    case 2: cnt2++; break;
+    case 3: cnt3++; break;
+    default: break;
+  })
+}
+
+int sense_rpm(int motor_num) {
+  int motor_cnt = 0;
+  switch(motor_num){
+    case 0: motor_cnt = cnt0; break;
+    case 1: motor_cnt = cnt1; break;
+    case 2: motor_cnt = cnt2; break;
+    case 3: motor_cnt = cnt3; break;
+    default: break;
+  } 
+
+  unsigned long start = micros();
+  if (motor_cnt > maxCnt) {
+    float seconds = (micros() - start) / 1000000.0;
+    float rpm = (motor_cnt / seconds * 60.0) / 3;
+
+    SUM = SUM - READINGS[INDEX];       // Remove the oldest entry from the sum
+    VALUE = rpm;        // Read the next sensor value
+    READINGS[INDEX] = VALUE;           // Add the newest reading to the window
+    SUM = SUM + VALUE;                 // Add the newest reading to the sum
+    INDEX = (INDEX+1) % WINDOW_SIZE;   // Increment the index, and wrap to 0 if it exceeds the window size
+
+    AVERAGED = SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
+
+    switch(motor_num){
+      case 0: cnt0 = 0; break;
+      case 1: cnt1 = 0; break;
+      case 2: cnt2 = 0; break;
+      case 3: cnt3 = 0; break;
+      default: break;
+    }
+  }
+  return AVERAGED;
+}
+
+/*************************************/
+
 // setup 
 void setup() {
   // general config
@@ -38,10 +113,24 @@ void setup() {
     allMotors[i].motor.attach(MOTOR_PIN[i]);
     allMotors[i].power = MIN_SIGNAL;
     allMotors[i].motor.writeMicroseconds(MIN_SIGNAL);
+
+  // initialize HALL SENSOR
+
+  // Serial.begin(9600);
+  // hopefully sensor works on the same serial port, if not may need to change the mainbaud rate/a second port! 
+  // if code does not work CHECK HERE! <---------------------------------------------------------------------------------------
+  pinMode(hallPin0, INPUT);
+  attachInterrupt(digitalPinToInterrupt(hallPin0), count(0), FALLING);
+  // pinMode(hallPin1, INPUT);
+  // attachInterrupt(digitalPinToInterrupt(hallPin1), count(1), FALLING);
+  // pinMode(hallPin2, INPUT);
+  // attachInterrupt(digitalPinToInterrupt(hallPin2), count(2), FALLING);
+  // pinMode(hallPin3, INPUT);
+  // attachInterrupt(digitalPinToInterrupt(hallPin3), count(3), FALLING);
   }
 
   // sync with main
-  Serial.print(1);
+  Serial.println("Main synced.");
 
   // wait for prompt to start 
   while (buf[1] != '\t')
@@ -63,8 +152,12 @@ void setup() {
   }
 }
 
+
 // loop
 void loop() {
+
+/******* MOTOR CODE *******/
+
   // reading key takes total of 20ms (based on timeout)
   Serial.readBytes(buf, BUFFER_SIZE);
   key = buf[0];
@@ -92,7 +185,7 @@ void loop() {
 
     // individual motor control => increase
     // blue
-    case 'w': // <----------------------------------------- wasd may be refactored to use joystick instead
+    case 'w': // wasd may be refactored to use joystick instead <-------------------------------------------------------------------------------
       allMotors[0].power += 5;
       allMotors[0].power >= MAX_SIGNAL ? allMotors[0].power = MAX_SIGNAL : allMotors[0].power = allMotors[0].power; // saturate
       displayAllMotors();
@@ -155,6 +248,23 @@ void loop() {
       displayAllMotors();
       digitalWrite(13,HIGH);  
       break;
+
+    /******* AUTO STABLIZING CODE *******/
+    case 'x': // may need to insert case into keyboard_controller.py <------------------------------------------------------------------
+      Serial.print("Detected RPM: ")
+      for (int i = 0; i < 4; i++) {
+        int RPM = sense_rpm(i);
+        Serial.print(RPM);
+        Serial.print('\t');
+        int correction = RPM - allMotors[i].power; // note that upping the power and the measured RPM IS NOT A ONE TO ONE! EXPERIMENT <-------------------
+        (correction > 10 && RPM < MAX_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, positive
+        (correction < -10 && RPM > MIN_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, negative
+      }
+      Serial.print('\n');
+      displayAllMotors();
+      digitalWrite(13,HIGH);  
+      break;
+    /***********************************/
 
     // quit program
     case 'Q':
@@ -248,7 +358,9 @@ void quit() {
   Serial.end();
 
   // sleep forever until restart
-  // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+  // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF); <-----------------------------------------------------------------------
+
+  /*************************************/
 }
 
 void displayAllMotors() {
