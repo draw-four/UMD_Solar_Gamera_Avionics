@@ -38,9 +38,9 @@ int sense_rpm(MOTOR motor);
 
 /*************************************/
 
-/******* HALL SENSOR VARIABLES *******/
+/******* HALL SENSOR VARIABLES *******/ // <--------------------------refactor so each motor contains its own cnt, start, and RPM if testing works
 
-const int NUMBER_OF_MOTORS = 4; // REPLACED ALL INSTANCES OF 4 WITH THIS CONSTANT FOR TESTING ! <---------------------------------------------------
+const int NUMBER_OF_MOTORS = 4;
 const int hall_pin_arr[NUMBER_OF_MOTORS] = {2,3,4,5};
 const int maxCnt = 1;
 
@@ -52,6 +52,13 @@ const int maxCnt = 1;
 // volatile int cnt2 = 0;
 // volatile int cnt3 = 0;
 (volatile int) cnt_arr[NUMBER_OF_MOTORS] = {0}; // or {0,0,0,0}
+
+// unsigned long start_array[NUMBER_OF_MOTORS] = {0,0,0,0};
+unsigned long start_array[NUMBER_OF_MOTORS] = {0};
+
+int RPM[NUMBER_OF_MOTORS] = {0};
+
+int minimum_rpm = 0;
 
 /*************************************/
 
@@ -76,9 +83,8 @@ int sense_rpm(MOTOR motor) {
     default: break;
   } 
 
-  // move back here
   if (motor_cnt > maxCnt) {
-    float seconds = (micros() - start) / 1000000.0; // implemented with start_array; no problem if stabilizing code is taken out of loop??? <------------
+    float seconds = (micros() - start) / 1000000.0; // implemented with start_array; may be a problem if taken out of loop
     float rpm = (motor_cnt / seconds * 60.0) / 3;
 
     motor->SUM -= motor->READINGS[INDEX];       // Remove the oldest entry from the sum
@@ -119,7 +125,7 @@ void setup() {
 
   // Serial.begin(9600);
   // hopefully sensor works on the same serial port, if not may need to change the mainbaud rate/a second port! 
-  // if code does not work CHECK HERE! <---------------------------------------------------------------------------------------
+  // if code does not work CHECK HERE! <---------------------------------------------------------------------------------------------------------------------
   pinMode(hall_pin_arr[0], INPUT);
   attachInterrupt(digitalPinToInterrupt(hall_pin_arr[0]), count(0), FALLING);
   pinMode(hall_pin_arr[1], INPUT);
@@ -129,7 +135,8 @@ void setup() {
   pinMode(hall_pin_arr[3], INPUT);
   attachInterrupt(digitalPinToInterrupt(hall_pin_arr[3]), count(3), FALLING);
 
-  unsigned long start_array[4] = {micros()}; // refactored to include all hall sensor function here! <-------------------------------------------------
+  // start_array = {micros(), micros(), micros(), micros()};
+  start_array = {micros()};
 
   }
 
@@ -253,25 +260,48 @@ void loop() {
       digitalWrite(13,HIGH);  
       break;
 
-    case 'x':
-      /******* AUTO STABLIZING CODE *******/
-  /* set up to loop every run*/
-  Serial.print("Detected RPM: ")
-      for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
-        int RPM = sense_rpm(allMotors[i]);
-        Serial.print(RPM);
-        Serial.print('\t');
-        int correction = RPM - allMotors[i].power; // note that upping the power and the measured RPM IS NOT A ONE TO ONE! EXPERIMENT <-------------------
-        (correction > 10 && RPM < MAX_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, positive
-        (correction < -10 && RPM > MIN_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, negative
-      }
-      Serial.print('\n');
-  /***********************************/
-
     // quit program
     case 'Q':
       quit();
   }
+
+      /******* AUTO STABILIZING CODE *******/
+  
+      /* set up to loop every run*/
+      Serial.print("  Detected RPM: ")
+      for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
+        RPM[i] = sense_rpm(allMotors[i]);
+        Serial.print(RPM[i]);
+        Serial.print('\t');
+        /*
+          MAIN PROBLEM: IF RPM IS LIKE 10-20 TIMES A SECOND AND MOTORS ARE RUNNING AT POWER >1000, AND RPMS ARE MARKEDLY DIFFERENT, THERE MAY BE NO WAY TO DIRECTLY ADJUST.
+          WE MAY NEED TO PICK ONE RPM (SMALLEST OR LARGEST RPM?) AND FORCE OTHERS TO THAT RPM.
+          FOR THE TEST, FIRST CHECK RPM. PERHAPS WE *CAN* ESTABLISH SOME RELATIONSHIP BETWEEN POWER AND RPM WITH ACTUAL BLADE TEST.
+          ALSO THE BELOW CODE DOES NOT WORK EVEN IF IT WAS 1 TO 1, as both RPM and .power would chase each other to saturation. 
+          ALSO TEST CODE TRIES TO BALANCE IN ALL CONDITIONS, A PERMANENT HOVER MODE (PRESSING W WOULD BRING UP ASD AS WELL)
+        */
+        // LEGACY BAD CODE:
+        // int correction = RPM - allMotors[i].power; // note that upping the power and the measured RPM IS NOT A ONE TO ONE! EXPERIMENT <-------------------
+        // (correction > 10 && RPM < MAX_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, positive
+        // (correction < -10 && RPM > MIN_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, negative
+        // END LEGACY CODE
+
+        
+      }
+      // TEST CODE
+      // maximum_rpm = RPM[0];
+      // for (int i = 1; i < NUMBER_OF_MOTORS; i++){
+      //   if (RPM[i] > maximum_rpm) {
+      //     maximum_rpm = RPM[i];
+      //   }
+      // }
+      // for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
+      //   if (maximum_rpm - RPM[i] >= 0) { // change as needed
+      //     allMotors[i].power++; // small +1 increments so as to not overwhelm speed adjustments
+      //   }
+      // }
+      Serial.print('\n');
+      /***********************************/
 
   delay(5);
   // update throttle
