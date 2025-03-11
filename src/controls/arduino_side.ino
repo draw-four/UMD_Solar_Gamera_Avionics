@@ -78,7 +78,7 @@ int sense_rpm(MOTOR motor) {
 
   // move back here
   if (motor_cnt > maxCnt) {
-    float seconds = (micros() - start) / 1000000.0;
+    float seconds = (micros() - start) / 1000000.0; // implemented with start_array; no problem if stabilizing code is taken out of loop??? <------------
     float rpm = (motor_cnt / seconds * 60.0) / 3;
 
     motor->SUM -= motor->READINGS[INDEX];       // Remove the oldest entry from the sum
@@ -253,12 +253,8 @@ void loop() {
       digitalWrite(13,HIGH);  
       break;
 
-    // quit program
-    case 'Q':
-      quit();
-  }
-
-  /******* AUTO STABLIZING CODE *******/
+    case 'x':
+      /******* AUTO STABLIZING CODE *******/
   /* set up to loop every run*/
   Serial.print("Detected RPM: ")
       for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
@@ -266,11 +262,16 @@ void loop() {
         Serial.print(RPM);
         Serial.print('\t');
         int correction = RPM - allMotors[i].power; // note that upping the power and the measured RPM IS NOT A ONE TO ONE! EXPERIMENT <-------------------
-        (correction > 10 && allMotors[i].power < MAX_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, positive
-        (correction < -10 && allMotors[i].power > MIN_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, negative
+        (correction > 10 && RPM < MAX_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, positive
+        (correction < -10 && RPM > MIN_SIGNAL) ? allMotors[i].power = RPM : allMotors[i].power = allMotors[i].power; // saturate, negative
       }
       Serial.print('\n');
   /***********************************/
+
+    // quit program
+    case 'Q':
+      quit();
+  }
 
   delay(5);
   // update throttle
