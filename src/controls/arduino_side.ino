@@ -1,12 +1,14 @@
 /*
 BLDC controller based on keyboard input
 */
-
+#include <SoftwareSerial.h> 
 #include <Servo.h> // <--------------------------- possibly a missing file? I would like to see it
 // #include "LowPower.h" <------------------------ may be relevant
 
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
+
+SoftwareSerial mySerial(0, 1); // RX, TX
 
 // read key vars
 char key;
@@ -30,6 +32,7 @@ void displayAllMotors();
 void setup() {
   // general config
   Serial.begin(115200);
+  mySerial.begin(9600);
   Serial.setTimeout(20);  
   pinMode(13, OUTPUT);
 
@@ -167,6 +170,12 @@ void loop() {
     allMotors[i].motor.writeMicroseconds(allMotors[i].power);
   }  
   digitalWrite(13,LOW);
+
+  if (mySerial.available() > 0) {
+        int sensorValue = mySerial.parseInt();
+        Serial.print("Received: "); 
+        Serial.println(sensorValue); // Debugging
+  }
 }
 
 // ESC calibration routine
