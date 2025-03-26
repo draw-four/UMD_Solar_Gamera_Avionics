@@ -1,3 +1,7 @@
+#include <SoftwareSerial.h> 
+
+SoftwareSerial mySerial(0, 1); // RX, TX
+
 const int hallPin = 2;
 const int maxCnt = 1;
 
@@ -16,6 +20,7 @@ void count() {
 
 void setup() {
   Serial.begin(9600);
+  mySerial.begin(115200); // Communication with Motor Arduino 
   pinMode(hallPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(hallPin), count, FALLING);
 }
@@ -35,6 +40,8 @@ void loop() {
   AVERAGED = SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
 
   //Serial.print("");
-  Serial.println(AVERAGED);
+  mySerial.println(AVERAGED); // Send data
+  Serial.print("Sent: "); Serial.println(AVERAGED); // Debugging
+  //delay(100);
   cnt = 0;
 }
