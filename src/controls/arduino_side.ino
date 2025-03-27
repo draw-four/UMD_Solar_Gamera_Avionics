@@ -8,7 +8,7 @@ BLDC controller based on keyboard input
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
 
-SoftwareSerial mySerial(0, 1); // RX, TX
+SoftwareSerial mySerial(4, 5); // RX, TX
 
 // read key vars
 char key;
