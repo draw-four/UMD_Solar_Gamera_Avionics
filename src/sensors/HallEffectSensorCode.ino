@@ -1,6 +1,6 @@
 #include <SoftwareSerial.h> 
 
-SoftwareSerial mySerial(0, 1); // RX, TX
+SoftwareSerial mySerial(4, 5); // RX, TX
 
 const int hallPin = 2;
 const int maxCnt = 1;
