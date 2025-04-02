@@ -5,6 +5,7 @@ BLDC controller based on keyboard input
 /******* MOTOR CONTROL VARIABLES *******/
 
 #include <Servo.h>
+#include <SoftwareSerial.h>
 // #include "LowPower.h" // may be relevant? <------------------------------------------------------------------------------
 
 #define MIN_SIGNAL 800
@@ -15,6 +16,32 @@ char key;
 const int BUFFER_SIZE = 1;
 const int WINDOW_SIZE = 3;
 char buf[2];
+
+/*************************************/
+
+/******* HALL SENSOR VARIABLES *******/ // <--------------------------refactor so each motor contains its own cnt, start, and RPM if testing works
+
+const int NUMBER_OF_MOTORS = 4;
+const int hall_pin_arr[NUMBER_OF_MOTORS] = {2,3,4,5};
+const int maxCnt = 1;
+unsigned long start_arr[NUMBER_OF_MOTORS];
+
+// volatile because it depends on user input and measurement delays
+// unsure if volatile int array[...] would break anything <------------------------------------------------------------------------------------
+// if it does replace with the old:
+// volatile int cnt0 = 0;
+// volatile int cnt1 = 0;
+// volatile int cnt2 = 0;
+// volatile int cnt3 = 0;
+volatile int cnt_arr[NUMBER_OF_MOTORS] = {0,0,0,0};
+
+unsigned long start_array[NUMBER_OF_MOTORS] = {0,0,0,0};
+
+int RPM[NUMBER_OF_MOTORS] = {0};
+
+int minimum_rpm = 0;
+
+/*************************************/
 
 // motor struct
 const int MOTOR_PIN[NUMBER_OF_MOTORS] = {6,9,10,11};
@@ -36,45 +63,26 @@ void displayAllMotors();
 void count(int motor_num);
 int sense_rpm(MOTOR motor);
 
-/*************************************/
-
-/******* HALL SENSOR VARIABLES *******/ // <--------------------------refactor so each motor contains its own cnt, start, and RPM if testing works
-
-const int NUMBER_OF_MOTORS = 4;
-const int hall_pin_arr[NUMBER_OF_MOTORS] = {2,3,4,5};
-const int maxCnt = 1;
-
-// volatile because it depends on user input and measurement delays
-// unsure if volatile int array[...] would break anything <------------------------------------------------------------------------------------
-// if it does replace with the old:
-// volatile int cnt0 = 0;
-// volatile int cnt1 = 0;
-// volatile int cnt2 = 0;
-// volatile int cnt3 = 0;
-(volatile int) cnt_arr[NUMBER_OF_MOTORS] = {0}; // or {0,0,0,0}
-
-// unsigned long start_array[NUMBER_OF_MOTORS] = {0,0,0,0};
-unsigned long start_array[NUMBER_OF_MOTORS] = {0};
-
-int RPM[NUMBER_OF_MOTORS] = {0};
-
-int minimum_rpm = 0;
-
-/*************************************/
-
 /******* HALL SENSOR FUNCTIONS *******/
-void count(int motor_num) {
-  switch (motor_num) {
-    case 0: cnt_arr[0]++; break;
-    case 1: cnt_arr[1]++; break;
-    case 2: cnt_arr[2]++; break;
-    case 3: cnt_arr[3]++; break;
-    default: break;
-  })
+void count0() {
+  cnt_arr[0]++;
 }
 
-int sense_rpm(MOTOR motor) {
+void count1() {
+  cnt_arr[1]++;
+}
+
+void count2() {
+  cnt_arr[2]++;
+}
+
+void count3() {
+  cnt_arr[3]++;
+}
+
+int sense_rpm(MOTOR motor, int motor_num) {
   int motor_cnt = 0;
+  int start = 0;
   switch(motor_num){
     case 0: motor_cnt = cnt_arr[0]; start = start_arr[0]; break;
     case 1: motor_cnt = cnt_arr[1]; start = start_arr[1]; break;
@@ -87,13 +95,13 @@ int sense_rpm(MOTOR motor) {
     float seconds = (micros() - start) / 1000000.0; // implemented with start_array; may be a problem if taken out of loop
     float rpm = (motor_cnt / seconds * 60.0) / 3;
 
-    motor->SUM -= motor->READINGS[INDEX];       // Remove the oldest entry from the sum
-    motor->VALUE = rpm;        // Read the next sensor value
-    motor->READINGS[INDEX] = motor->VALUE;           // Add the newest reading to the window
-    motor->SUM += motor->VALUE;                 // Add the newest reading to the sum
-    motor->INDEX = (motor->INDEX+1) % WINDOW_SIZE;   // Increment the index, and wrap to 0 if it exceeds the window size
+    motor.SUM -= motor.READINGS[motor.INDEX];       // Remove the oldest entry from the sum
+    motor.VALUE = rpm;        // Read the next sensor value
+    motor.READINGS[motor.INDEX] = motor.VALUE;           // Add the newest reading to the window
+    motor.SUM += motor.VALUE;                 // Add the newest reading to the sum
+    motor.INDEX = (motor.INDEX+1) % WINDOW_SIZE;   // Increment the index, and wrap to 0 if it exceeds the window size
 
-    motor->AVERAGED = motor->SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
+    motor.AVERAGED = motor.SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
 
     switch(motor_num){
       case 0: cnt_arr[0] = 0; start_arr[0] = micros(); break;
@@ -103,7 +111,7 @@ int sense_rpm(MOTOR motor) {
       default: break;
     }
   }
-  return motor->AVERAGED;
+  return motor.AVERAGED;
 }
 
 /*************************************/
@@ -126,22 +134,34 @@ void setup() {
   // Serial.begin(9600);
   // hopefully sensor works on the same serial port, if not may need to change the mainbaud rate/a second port! 
   // if code does not work CHECK HERE! <---------------------------------------------------------------------------------------------------------------------
+  const int unused_tx = 13;
+  SoftwareSerial serial_0 = SoftwareSerial(hall_pin_arr[0], unused_tx);
+  SoftwareSerial serial_1 = SoftwareSerial(hall_pin_arr[1], unused_tx);
+  SoftwareSerial serial_2 = SoftwareSerial(hall_pin_arr[2], unused_tx);
+  SoftwareSerial serial_3 = SoftwareSerial(hall_pin_arr[3], unused_tx);
+  pinMode(unused_tx, OUTPUT);
+  serial_0.begin(9600);
+  serial_1.begin(9600);
+  serial_2.begin(9600);
+  serial_3.begin(9600);
+
   pinMode(hall_pin_arr[0], INPUT);
-  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[0]), count(0), FALLING);
+  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[0]), count0, FALLING);
   pinMode(hall_pin_arr[1], INPUT);
-  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[1]), count(1), FALLING);
+  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[1]), count1, FALLING);
   pinMode(hall_pin_arr[2], INPUT);
-  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[2]), count(2), FALLING);
+  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[2]), count2, FALLING);
   pinMode(hall_pin_arr[3], INPUT);
-  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[3]), count(3), FALLING);
+  attachInterrupt(digitalPinToInterrupt(hall_pin_arr[3]), count3, FALLING);
 
-  // start_array = {micros(), micros(), micros(), micros()};
-  start_array = {micros()};
-
+  for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
+    start_array[i] = micros();
   }
 
-  // sync with main
-  Serial.println("Main synced.");
+  // needs to print 1 to interface with keyboard controller script
+  Serial.print(1);
+
+  }
 
   // wait for prompt to start 
   while (buf[1] != '\t')
@@ -268,9 +288,9 @@ void loop() {
       /******* AUTO STABILIZING CODE *******/
   
       /* set up to loop every run*/
-      Serial.print("  Detected RPM: ")
+      Serial.print("  Detected RPM: ");
       for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
-        RPM[i] = sense_rpm(allMotors[i]);
+        RPM[i] = sense_rpm(allMotors[i], i);
         Serial.print(RPM[i]);
         Serial.print('\t');
         /*
@@ -287,7 +307,7 @@ void loop() {
         // END LEGACY CODE
 
         
-      }
+      // }
       // TEST CODE
       // maximum_rpm = RPM[0];
       // for (int i = 1; i < NUMBER_OF_MOTORS; i++){
@@ -300,9 +320,9 @@ void loop() {
       //     allMotors[i].power++; // small +1 increments so as to not overwhelm speed adjustments
       //   }
       // }
-      Serial.print('\n');
+      // Serial.print('\n');
       /***********************************/
-
+      }
   delay(5);
   // update throttle
   for (int i = 0; i < NUMBER_OF_MOTORS; i++) {
