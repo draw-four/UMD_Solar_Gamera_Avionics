@@ -53,6 +53,8 @@ struct MOTOR{
   float SUM = 0;
   float READINGS[WINDOW_SIZE];
   int AVERAGED = 0;
+  // cnt = 0;
+  // time = micros or 0;
 };
 struct MOTOR allMotors[NUMBER_OF_MOTORS];
 
@@ -83,13 +85,18 @@ void count3() {
 int sense_rpm(MOTOR motor, int motor_num) {
   int motor_cnt = 0;
   int start = 0;
-  switch(motor_num){
-    case 0: motor_cnt = cnt_arr[0]; start = start_arr[0]; break;
-    case 1: motor_cnt = cnt_arr[1]; start = start_arr[1]; break;
-    case 2: motor_cnt = cnt_arr[2]; start = start_arr[2]; break;
-    case 3: motor_cnt = cnt_arr[3]; start = start_arr[3]; break;
+  /*switch(motor_num){
+    // refactor start_arr to be inside motor.
+    // cnt might not be able without instantiating motor alongside allMotors? where is allMotors even 
+    case 0: motor_cnt = cnt_arr[0]; start = start_arr[0]; detachInterrupt(0); break;
+    case 1: motor_cnt = cnt_arr[1]; start = start_arr[1]; detachInterrupt(1); break;
+    case 2: motor_cnt = cnt_arr[2]; start = start_arr[2]; detachInterrupt(2); break;
+    case 3: motor_cnt = cnt_arr[3]; start = start_arr[3]; detachInterrupt(3); break;
     default: break;
-  } 
+  }*/
+  motor_cnt = cnt_arr[motor_num];
+  start = start_arr[motor_num];
+  detachInterrupt(motor_num);
 
   if (motor_cnt > maxCnt) {
     float seconds = (micros() - start) / 1000000.0; // implemented with start_array; may be a problem if taken out of loop
@@ -103,12 +110,20 @@ int sense_rpm(MOTOR motor, int motor_num) {
 
     motor.AVERAGED = motor.SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
 
-    switch(motor_num){
+    /*switch(motor_num){
       case 0: cnt_arr[0] = 0; start_arr[0] = micros(); break;
       case 1: cnt_arr[1] = 0; start_arr[1] = micros(); break;
       case 2: cnt_arr[2] = 0; start_arr[2] = micros(); break;
       case 3: cnt_arr[3] = 0; start_arr[3] = micros(); break;
       default: break;
+    }*/
+    cnt_arr[motor_num] = 0;
+    start_arr[motor_num] = micros();
+    switch (motor_num {
+      case 0: attachInterrupt(digitalPinToInterrupt(hall_pin_arr[0]), count0, FALLING); break;
+      case 1: attachInterrupt(digitalPinToInterrupt(hall_pin_arr[1]), count1, FALLING); break;
+      case 2: attachInterrupt(digitalPinToInterrupt(hall_pin_arr[2]), count2, FALLING); break;
+      case 3: attachInterrupt(digitalPinToInterrupt(hall_pin_arr[3]), count3, FALLING); break;
     }
   }
   return motor.AVERAGED;
@@ -128,22 +143,22 @@ void setup() {
     allMotors[i].motor.attach(MOTOR_PIN[i]);
     allMotors[i].power = MIN_SIGNAL;
     allMotors[i].motor.writeMicroseconds(MIN_SIGNAL);
-
-  // initialize HALL SENSOR
+  }
+    // initialize HALL SENSOR
 
   // Serial.begin(9600);
   // hopefully sensor works on the same serial port, if not may need to change the mainbaud rate/a second port! 
   // if code does not work CHECK HERE! <---------------------------------------------------------------------------------------------------------------------
-  const int unused_tx = 13;
-  SoftwareSerial serial_0 = SoftwareSerial(hall_pin_arr[0], unused_tx);
-  SoftwareSerial serial_1 = SoftwareSerial(hall_pin_arr[1], unused_tx);
-  SoftwareSerial serial_2 = SoftwareSerial(hall_pin_arr[2], unused_tx);
-  SoftwareSerial serial_3 = SoftwareSerial(hall_pin_arr[3], unused_tx);
-  pinMode(unused_tx, OUTPUT);
-  serial_0.begin(9600);
-  serial_1.begin(9600);
-  serial_2.begin(9600);
-  serial_3.begin(9600);
+  // const int unused_tx = 13;
+  // SoftwareSerial serial_0 = SoftwareSerial(hall_pin_arr[0], unused_tx);
+  // SoftwareSerial serial_1 = SoftwareSerial(hall_pin_arr[1], unused_tx);
+  // SoftwareSerial serial_2 = SoftwareSerial(hall_pin_arr[2], unused_tx);
+  // SoftwareSerial serial_3 = SoftwareSerial(hall_pin_arr[3], unused_tx);
+  // pinMode(unused_tx, OUTPUT);
+  // serial_0.begin(9600);
+  // serial_1.begin(9600);
+  // serial_2.begin(9600);
+  // serial_3.begin(9600);
 
   pinMode(hall_pin_arr[0], INPUT);
   attachInterrupt(digitalPinToInterrupt(hall_pin_arr[0]), count0, FALLING);
@@ -160,7 +175,6 @@ void setup() {
 
   // needs to print 1 to interface with keyboard controller script
   Serial.print(1);
-
   }
 
   // wait for prompt to start 
@@ -190,6 +204,7 @@ void loop() {
 /******* MOTOR CODE *******/
 
   // reading key takes total of 20ms (based on timeout)
+ if (Serial.available()) { 
   Serial.readBytes(buf, BUFFER_SIZE);
   key = buf[0];
 
@@ -284,7 +299,7 @@ void loop() {
     case 'Q':
       quit();
   }
-
+ }
       /******* AUTO STABILIZING CODE *******/
   
       /* set up to loop every run*/
