@@ -8,7 +8,7 @@ float VALUE = 0;
 float SUM = 0;
 const int WINDOW_SIZE = 3;
 float READINGS[WINDOW_SIZE];
-float AVERAGED = 0;
+int AVERAGED = 0;
 
 void count() {
   cnt++;
