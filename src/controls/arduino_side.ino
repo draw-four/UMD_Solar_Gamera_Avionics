@@ -13,6 +13,10 @@ char key;
 const int BUFFER_SIZE = 1;
 char buf[2];
 
+String readString, readString2, readString3;
+const int SERIAL_BUFFER_SIZE = 3;
+char serial_buf[3];
+
 // motor struct
 const int MOTOR_PIN[4] = {6,9,10,11};
 struct MOTOR{
@@ -30,7 +34,18 @@ void displayAllMotors();
 void setup() {
   // general config
   Serial.begin(115200);
+
+  Serial1.begin(9600); // make sure the pins for these are NOT rx and tx 0 and 1
+  Serial2.begin(9600);
+  Serial3.begin(9600);
+  // Serial4.begin(9600); remember that the fourth serial is basically the original Serial
+  
   Serial.setTimeout(20);  
+
+  Serial1.setTimeout(20);
+  Serial2.setTimeout(20);
+  Serial3.setTimeout(20);
+  
   pinMode(13, OUTPUT);
 
   // initialize motor
@@ -66,6 +81,8 @@ void setup() {
 // loop
 void loop() {
   // reading key takes total of 20ms (based on timeout)
+  if (Serial.available()){
+    
   Serial.readBytes(buf, BUFFER_SIZE);
   key = buf[0];
 
@@ -159,6 +176,49 @@ void loop() {
     // quit program
     case 'Q':
       quit();
+  }
+  }
+
+  while (Serial1.available()) {
+    delay(3);  //delay to allow buffer to fill 
+    if (Serial1.available() >0) {
+      char c = Serial1.read();  //gets one byte from serial buffer
+      readString += c; //makes the string readString
+    } 
+    /*
+    Serial1.readBytes(serial_buf, SERIAL_BUFFER_SIZE);
+    readString = serial_buf[2] + serial_buf[1] + serial_buf[0];
+    */
+    Serial.print("RPM1: " + readString);
+    readString = "";
+  }
+
+  while (Serial2.available()) {
+    delay(3);  //delay to allow buffer to fill 
+    if (Serial2.available() >0) {
+      char c = Serial2.read();  //gets one byte from serial buffer
+      readString2 += c; //makes the string readString
+    } 
+    /*
+    Serial2.readBytes(serial_buf, SERIAL_BUFFER_SIZE);
+    readString2 = serial_buf[2] + serial_buf[1] + serial_buf[0];
+    */
+    Serial.print("RPM2: " + readString2);
+    readString2 = "";
+  }
+
+  while (Serial3.available()) {
+    delay(3);  //delay to allow buffer to fill 
+    if (Serial3.available() >0) {
+      char c = Serial3.read();  //gets one byte from serial buffer
+      readString3 += c; //makes the string readString
+    } 
+    /*
+    Serial3.readBytes(serial_buf, SERIAL_BUFFER_SIZE);
+    readString3 = serial_buf[2] + serial_buf[1] + serial_buf[0];
+    */
+    Serial.print("RPM3: " + readString3);
+    readString3 = "";
   }
 
   delay(5);
