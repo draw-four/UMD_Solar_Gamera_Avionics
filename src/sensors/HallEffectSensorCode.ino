@@ -8,7 +8,9 @@ float VALUE = 0;
 float SUM = 0;
 const int WINDOW_SIZE = 3;
 float READINGS[WINDOW_SIZE];
-int AVERAGED = 0;
+float AVERAGED = 0;
+
+int iter = 0; // NEW CODE
 
 void count() {
   cnt++;
@@ -21,6 +23,7 @@ void setup() {
 }
 
 void loop() {
+  iter++;
   unsigned long start = micros();
   while (cnt < maxCnt) ;
   float seconds = (micros() - start) / 1000000.0;
@@ -35,6 +38,8 @@ void loop() {
   AVERAGED = SUM / WINDOW_SIZE;      // Divide the sum of the window by the window size for the result
 
   //Serial.print("");
-  Serial.println(AVERAGED);
+  //if (iter == 1000) {
+  Serial.print(AVERAGED);
+  //}
   cnt = 0;
 }
