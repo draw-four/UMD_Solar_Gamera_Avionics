@@ -27,7 +27,7 @@ void loop() {
   unsigned long start = micros();
   while (cnt < maxCnt) ;
   float seconds = (micros() - start) / 1000000.0;
-  float rpm = (cnt / seconds * 60.0) / 3;
+  float rpm = (cnt / seconds * 60.0);
 
   SUM = SUM - READINGS[INDEX];       // Remove the oldest entry from the sum
   VALUE = rpm;        // Read the next sensor value
