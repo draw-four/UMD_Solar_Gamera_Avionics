@@ -4,6 +4,10 @@ Removed all bufs, readBytes, and print(int)s.
 */
 
 #include <Servo.h>
+// #include <SoftwareSerial.h>
+const byte rxPin = 10;
+const byte txPin = 11;
+// SoftwareSerial soft_serial (rxPin, txPin);
 
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
@@ -31,15 +35,17 @@ void setup() {
   Serial.begin(115200);
 
   Serial1.begin(9600); // make sure the pins for these are NOT rx and tx 0 and 1
-  // Serial2.begin(9600);
-  // Serial3.begin(9600);
+  Serial2.begin(9600);
+  Serial3.begin(9600);
   // Serial4.begin(9600); remember that the fourth serial is basically the original Serial
+  // soft_serial.begin(9600);
+
   
   Serial.setTimeout(20);  
 
   Serial1.setTimeout(20);
-  // Serial2.setTimeout(20);
-  // Serial3.setTimeout(20);
+  Serial2.setTimeout(20);
+  Serial3.setTimeout(20);
   
 
   // initialize motor
@@ -168,7 +174,7 @@ void loop() {
       Serial.print("RPM1: ");
       Serial.println(rpm_1);
   }
-/*
+
  while (Serial2.available()) { // if there is a new RPM measurement
     delay(3);  // delay to allow buffer to fill 
     if (Serial2.available() >0) {
@@ -177,9 +183,7 @@ void loop() {
       Serial.print("RPM2: ");
       Serial.println(rpm_2);
   }
-    */
 
-  /*
   while (Serial1.available()) { // if there is a new RPM measurement
     delay(3);  // delay to allow buffer to fill 
     if (Serial1.available() >0) {
@@ -188,14 +192,15 @@ void loop() {
       Serial.print("RPM1: ");
       Serial.println(rpm_1);
   }
-  }
-  */
+  
+
 
   delay(5);
   // update throttle
   for (int i = 0; i < 4; i++) {
     allMotors[i].motor.writeMicroseconds(allMotors[i].power);
   }  
+  // digitalWrite(13,LOW);
 }
 
 // ESC calibration routine
@@ -264,6 +269,17 @@ Serial.flush();
 void quit() {
   Serial.println("Quitting program...");
 
+  // LED 
+  /*
+  for (int i = 200; i > 0; i--) {
+    float DC = i / 200.0;
+    // digitalWrite(13, 1);
+    delayMicroseconds(floor(2000 * DC));
+    // digitalWrite(13, 0);
+    delayMicroseconds(floor(2000 * (1 - DC)));
+  }
+  */
+
   // decelerating motors
   int dp[4];
   for (int i = 0; i < 4; i++) { 
@@ -285,7 +301,10 @@ void quit() {
   }
   Serial.println("Successfully quit. ");
   Serial.end();
-  while (1) ; // sleep forever
+  while (1) ;
+
+  // sleep forever until restart
+  // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 }
 
 void displayAllMotors() {
