@@ -184,13 +184,13 @@ void loop() {
       Serial.println(rpm_2);
   }
 
-  while (Serial1.available()) { // if there is a new RPM measurement
+  while (Serial3.available()) { // if there is a new RPM measurement
     delay(3);  // delay to allow buffer to fill 
-    if (Serial1.available() >0) {
-      rpm_1 = Serial1.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    if (Serial3.available() >0) {
+      rpm_3 = Serial3.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
     }
-      Serial.print("RPM1: ");
-      Serial.println(rpm_1);
+      Serial.print("RPM3: ");
+      Serial.println(rpm_3);
   }
   
 
