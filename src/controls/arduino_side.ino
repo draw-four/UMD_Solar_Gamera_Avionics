@@ -206,12 +206,15 @@ void loop() {
 // ESC calibration routine
 void calibrate() {
   /*
-    THIS FUNCTION IS BROKEN! TROUBLESHOOT
+    THE CALIBRATE FUNCTION WORKS DIFFERENTLY.
   */
   // send max throttle
+
+  /*
   for (int i = 0; i < 4; i++) {
     allMotors[i].motor.writeMicroseconds(MAX_SIGNAL);
   }
+  */
 
   // calibration begin, plug in power here
   // represented by 2
@@ -230,7 +233,9 @@ void calibrate() {
   // wait for tone to end then input
   Serial.println("Power cycle after tone, then press any key.");
   while (Serial.available() == 0) ;
-  Serial.flush();
+  while(Serial.available() != 0 ) {
+    Serial.read();
+  }
   /*
   while (key != '\t')
       Serial.readBytes(buf, 2);
@@ -256,9 +261,12 @@ void calibrate() {
   // power cycle now
 
   // wait for prompt to start
+delay(1000);
 Serial.println("Press any key to begin. ");
 while (Serial.available() == 0) ;
-Serial.flush();
+while(Serial.available() != 0 ) {
+    Serial.read();
+}
 
   /*
   while (buf[1] != '\t')
