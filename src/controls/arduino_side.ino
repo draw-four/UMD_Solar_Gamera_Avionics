@@ -5,8 +5,9 @@ Removed all bufs, readBytes, and print(int)s.
 
 #include <Servo.h>
 // #include <SoftwareSerial.h>
-const byte rxPin = 10;
-const byte txPin = 11;
+// SOFTWARE SERIAL NOT AVAILABLE IN DUE!
+// const byte rxPin = 10;
+// const byte txPin = 11;
 // SoftwareSerial soft_serial (rxPin, txPin);
 
 #define MIN_SIGNAL 800
@@ -14,7 +15,7 @@ const byte txPin = 11;
 
 // read key vars
 char key;
-float rpm_1, rpm_2, rpm_3;
+float rpm_1, rpm_2, rpm_3, rpm_4;
 
 // motor struct
 const int MOTOR_PIN[4] = {6,9,10,11};
@@ -37,8 +38,7 @@ void setup() {
   Serial1.begin(9600); // make sure the pins for these are NOT rx and tx 0 and 1
   Serial2.begin(9600);
   Serial3.begin(9600);
-  // Serial4.begin(9600); remember that the fourth serial is basically the original Serial
-  // soft_serial.begin(9600);
+  //soft_serial.begin(9600); // the fourth one
 
   
   Serial.setTimeout(20);  
@@ -46,6 +46,7 @@ void setup() {
   Serial1.setTimeout(20);
   Serial2.setTimeout(20);
   Serial3.setTimeout(20);
+  //soft_serial.setTimeout(20);
   
 
   // initialize motor
@@ -61,7 +62,7 @@ void setup() {
   key = Serial.read();
   // calibrate if required
   if (key == 'c') {
-    calibrate(); // this function is likely very broken atm! Troubleshoot!
+    calibrate(); 
   }
   Serial.println("Program begins.");
 }
@@ -192,7 +193,17 @@ void loop() {
       Serial.print("RPM3: ");
       Serial.println(rpm_3);
   }
-  
+
+/*
+  while (soft_serial.available()) { // if there is a new RPM measurement
+    delay(3);  // delay to allow buffer to fill 
+    if (soft_serial.available() >0) {
+      rpm_4 = soft_serial.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    }
+      soft_serial.print("RPM4: ");
+      soft_serial.println(rpm_4);
+  }
+  */
 
 
   delay(5);
@@ -206,30 +217,20 @@ void loop() {
 // ESC calibration routine
 void calibrate() {
   /*
-    THE CALIBRATE FUNCTION WORKS DIFFERENTLY.
-  */
-  // send max throttle
-
-  /*
-  for (int i = 0; i < 4; i++) {
-    allMotors[i].motor.writeMicroseconds(MAX_SIGNAL);
-  }
+    THE CALIBRATE FUNCTION WORKS DIFFERENTLY
+    SIMPLY WALKS YOU THRU THE POWER CYCLE PROCESS
   */
 
-  // calibration begin, plug in power here
-  // represented by 2
+  // no longer sending max throttle
+
   Serial.println("Calibration begins. ");
 
-/*
-  // flash LED as indication
-  for(int i = 0; i < 3; i++) {
-    // digitalWrite(13,HIGH); 
-    delay(1000);
-    digitalWrite(13,LOW);
-    delay(1000);
-  }
+  /*
+    SHOULD BEEP HERE UPON TURNING ON
+    ORIGINAL SPEED CONTROLLER: *monotone* beep beep
+    NEW SPEED CONTROLLER: *rising tone* beep beep beep *pause* *monotone* beep beep *pause* beeeeeeep
   */
-
+  
   // wait for tone to end then input
   Serial.println("Power cycle after tone, then press any key.");
   while (Serial.available() == 0) ;
@@ -237,28 +238,14 @@ void calibrate() {
     Serial.read();
   }
   /*
-  while (key != '\t')
-      Serial.readBytes(buf, 2);
-  buf[1] = ' ';
+    SHOULD BEEP AGAIN HERE UPON POWER CYCLE
   */
 
-  // sending min throttle
-  // represented by 3
+  // sending min throttle for legacy's sake lol
   Serial.println("Sending min throttle. ");
   for (int i = 0; i < 4; i++) {
     allMotors[i].motor.writeMicroseconds(MIN_SIGNAL);
   }
-  /*
-  // flash LED to indicate completion
-  for(int i = 0; i < 3; i++) {
-    // digitalWrite(13,HIGH); 
-    delay(1000);
-    digitalWrite(13,LOW);
-    delay(1000);
-  }
-  */
-
-  // power cycle now
 
   // wait for prompt to start
 delay(1000);
@@ -268,25 +255,10 @@ while(Serial.available() != 0 ) {
     Serial.read();
 }
 
-  /*
-  while (buf[1] != '\t')
-    Serial.readBytes(buf, 2);
-  */
 }
 
 void quit() {
   Serial.println("Quitting program...");
-
-  // LED 
-  /*
-  for (int i = 200; i > 0; i--) {
-    float DC = i / 200.0;
-    // digitalWrite(13, 1);
-    delayMicroseconds(floor(2000 * DC));
-    // digitalWrite(13, 0);
-    delayMicroseconds(floor(2000 * (1 - DC)));
-  }
-  */
 
   // decelerating motors
   int dp[4];
@@ -312,7 +284,6 @@ void quit() {
   while (1) ;
 
   // sleep forever until restart
-  // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 }
 
 void displayAllMotors() {
