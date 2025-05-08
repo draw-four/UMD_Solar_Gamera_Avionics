@@ -72,7 +72,7 @@ void loop() {
   if (Serial.available() > 0){ // if any key is detected from the keyboard
   
   key = Serial.read(); // read in one character
-
+  // Serial.print(key);
   switch (key) {
     // increase total throttle
     case 'H':
@@ -163,7 +163,21 @@ void loop() {
     // quit program
     case 'Q':
       quit(); // this function works properly
+      break;
+
+    case 'U':
+      while (Serial.available()) { // if there is a new RPM measurement
+        delay(3);  // delay to allow buffer to fill 
+        if (Serial.available() >0) {
+        rpm_4 = Serial.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+        }
+      Serial.print("RPM4: ");
+      Serial.println(rpm_4);
+      }
+      break;
+      
     }
+    
   }
 
   // RPM display prototype. 
