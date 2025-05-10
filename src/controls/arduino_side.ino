@@ -1,17 +1,21 @@
 /*
-BLDC controller based on keyboard input
+BLDC controller based on ARDUINO SERIAL MONITOR INPUT
+Removed all bufs, readBytes, and print(int)s. 
 */
 
-#include <Servo.h> // <--------------------------- possibly a missing file? I would like to see it
-// #include "LowPower.h" <------------------------ may be relevant
+#include <Servo.h>
+// #include <SoftwareSerial.h>
+// SOFTWARE SERIAL NOT AVAILABLE IN DUE!
+// const byte rxPin = 10;
+// const byte txPin = 11;
+// SoftwareSerial soft_serial (rxPin, txPin);
 
 #define MIN_SIGNAL 800
 #define MAX_SIGNAL 2200
 
 // read key vars
 char key;
-const int BUFFER_SIZE = 1;
-char buf[2];
+float rpm_1, rpm_2, rpm_3, rpm_4;
 
 // motor struct
 const int MOTOR_PIN[4] = {6,9,10,11};
@@ -30,8 +34,20 @@ void displayAllMotors();
 void setup() {
   // general config
   Serial.begin(115200);
+
+  Serial1.begin(9600); // make sure the pins for these are NOT rx and tx 0 and 1
+  Serial2.begin(9600);
+  Serial3.begin(9600);
+  //soft_serial.begin(9600); // the fourth one
+
+  
   Serial.setTimeout(20);  
-  pinMode(13, OUTPUT);
+
+  Serial1.setTimeout(20);
+  Serial2.setTimeout(20);
+  Serial3.setTimeout(20);
+  //soft_serial.setTimeout(20);
+  
 
   // initialize motor
   for (int i = 0; i < 4; i++) {
@@ -40,35 +56,23 @@ void setup() {
     allMotors[i].motor.writeMicroseconds(MIN_SIGNAL);
   }
 
-  // sync with main
-  Serial.print(1);
-
-  // wait for prompt to start 
-  while (buf[1] != '\t')
-      Serial.readBytes(buf, 2);
-  buf[1] = ' ';
-
+  // this will sometimes double print, blame poor Arduino scheduling
+  Serial.println("Press c to calibrate, else press any key to continue: ");
+  while (Serial.available() == 0) ;
+  key = Serial.read();
   // calibrate if required
-  if (buf[0] == 'c')
+  if (key == 'c') {
     calibrate(); 
-
-  // begin program
-  Serial.println(0);
-  // flash LED x5
-  for(int i = 0; i < 5; i++) {
-    digitalWrite(13,HIGH); 
-    delay(100);
-    digitalWrite(13,LOW);
-    delay(100);
   }
+  Serial.println("Program begins.");
 }
 
 // loop
 void loop() {
-  // reading key takes total of 20ms (based on timeout)
-  Serial.readBytes(buf, BUFFER_SIZE);
-  key = buf[0];
-
+  if (Serial.available() > 0){ // if any key is detected from the keyboard
+  
+  key = Serial.read(); // read in one character
+  // Serial.print(key);
   switch (key) {
     // increase total throttle
     case 'H':
@@ -77,7 +81,7 @@ void loop() {
         allMotors[i].power >= MAX_SIGNAL ? allMotors[i].power = MAX_SIGNAL : allMotors[i].power = allMotors[i].power; // saturate
       }
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // decrease total throttle
@@ -87,7 +91,7 @@ void loop() {
         allMotors[i].power <= MIN_SIGNAL ? allMotors[i].power = MIN_SIGNAL : allMotors[i].power = allMotors[i].power; // saturate
       }
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // individual motor control => increase
@@ -96,7 +100,7 @@ void loop() {
       allMotors[0].power += 5;
       allMotors[0].power >= MAX_SIGNAL ? allMotors[0].power = MAX_SIGNAL : allMotors[0].power = allMotors[0].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // red
@@ -104,7 +108,7 @@ void loop() {
       allMotors[1].power += 5;
       allMotors[1].power >= MAX_SIGNAL ? allMotors[1].power = MAX_SIGNAL : allMotors[1].power = allMotors[1].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // yellow
@@ -112,7 +116,7 @@ void loop() {
       allMotors[2].power += 5;
       allMotors[2].power >= MAX_SIGNAL ? allMotors[2].power = MAX_SIGNAL : allMotors[2].power = allMotors[2].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // pink
@@ -120,7 +124,7 @@ void loop() {
       allMotors[3].power += 5;
       allMotors[3].power >= MAX_SIGNAL ? allMotors[3].power = MAX_SIGNAL : allMotors[3].power = allMotors[3].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // decrease
@@ -129,7 +133,7 @@ void loop() {
       allMotors[0].power -= 5;
       allMotors[0].power <= MIN_SIGNAL ? allMotors[0].power = MIN_SIGNAL : allMotors[0].power = allMotors[0].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // red
@@ -137,7 +141,7 @@ void loop() {
       allMotors[1].power -= 5;
       allMotors[1].power <= MIN_SIGNAL ? allMotors[1].power = MIN_SIGNAL : allMotors[1].power = allMotors[1].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // yellow
@@ -145,7 +149,7 @@ void loop() {
       allMotors[2].power -= 5;
       allMotors[2].power <= MIN_SIGNAL ? allMotors[2].power = MIN_SIGNAL : allMotors[2].power = allMotors[2].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // pink
@@ -153,78 +157,122 @@ void loop() {
       allMotors[3].power -= 5;
       allMotors[3].power <= MIN_SIGNAL ? allMotors[3].power = MIN_SIGNAL : allMotors[3].power = allMotors[3].power; // saturate
       displayAllMotors();
-      digitalWrite(13,HIGH);  
+      // digitalWrite(13,HIGH);  
       break;
 
     // quit program
     case 'Q':
-      quit();
+      quit(); // this function works properly
+      break;
+
+    case 'U':
+      while (Serial.available()) { // if there is a new RPM measurement
+        delay(3);  // delay to allow buffer to fill 
+        if (Serial.available() >0) {
+        rpm_4 = Serial.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+        }
+      Serial.print("RPM4: ");
+      Serial.println(rpm_4);
+      }
+      break;
+      
+    }
+    
   }
+
+  // RPM display prototype. 
+  while (Serial1.available()) { // if there is a new RPM measurement
+    delay(3);  // delay to allow buffer to fill 
+    if (Serial1.available() >0) {
+      rpm_1 = Serial1.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    }
+      Serial.print("RPM1: ");
+      Serial.println(rpm_1);
+  }
+
+ while (Serial2.available()) { // if there is a new RPM measurement
+    delay(3);  // delay to allow buffer to fill 
+    if (Serial2.available() >0) {
+      rpm_2 = Serial2.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    }
+      Serial.print("RPM2: ");
+      Serial.println(rpm_2);
+  }
+
+  while (Serial3.available()) { // if there is a new RPM measurement
+    delay(3);  // delay to allow buffer to fill 
+    if (Serial3.available() >0) {
+      rpm_3 = Serial3.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    }
+      Serial.print("RPM3: ");
+      Serial.println(rpm_3);
+  }
+
+/*
+  while (soft_serial.available()) { // if there is a new RPM measurement
+    delay(3);  // delay to allow buffer to fill 
+    if (soft_serial.available() >0) {
+      rpm_4 = soft_serial.parseFloat(); // make sure the No Line Ending is set for all Serial Monitors just in case.
+    }
+      soft_serial.print("RPM4: ");
+      soft_serial.println(rpm_4);
+  }
+  */
+
 
   delay(5);
   // update throttle
   for (int i = 0; i < 4; i++) {
     allMotors[i].motor.writeMicroseconds(allMotors[i].power);
   }  
-  digitalWrite(13,LOW);
+  // digitalWrite(13,LOW);
 }
 
 // ESC calibration routine
 void calibrate() {
-  // send max throttle
-  for (int i = 0; i < 4; i++) {
-    allMotors[i].motor.writeMicroseconds(MAX_SIGNAL);
-  }
+  /*
+    THE CALIBRATE FUNCTION WORKS DIFFERENTLY
+    SIMPLY WALKS YOU THRU THE POWER CYCLE PROCESS
+  */
 
-  // calibration begin, plug in power here
-  // represented by 2
-  Serial.println(2);
+  // no longer sending max throttle
 
-  // flash LED as indication
-  for(int i = 0; i < 3; i++) {
-    digitalWrite(13,HIGH); 
-    delay(1000);
-    digitalWrite(13,LOW);
-    delay(1000);
-  }
+  Serial.println("Calibration begins. ");
 
+  /*
+    SHOULD BEEP HERE UPON TURNING ON
+    ORIGINAL SPEED CONTROLLER: *monotone* beep beep
+    NEW SPEED CONTROLLER: *rising tone* beep beep beep *pause* *monotone* beep beep *pause* beeeeeeep
+  */
+  
   // wait for tone to end then input
-  while (buf[1] != '\t')
-      Serial.readBytes(buf, 2);
-  buf[1] = ' ';
+  Serial.println("Power cycle after tone, then press any key.");
+  while (Serial.available() == 0) ;
+  while(Serial.available() != 0 ) {
+    Serial.read();
+  }
+  /*
+    SHOULD BEEP AGAIN HERE UPON POWER CYCLE
+  */
 
-  // sending min throttle
-  // represented by 3
-  Serial.println(3);
+  // sending min throttle for legacy's sake lol
+  Serial.println("Sending min throttle. ");
   for (int i = 0; i < 4; i++) {
     allMotors[i].motor.writeMicroseconds(MIN_SIGNAL);
   }
-  // flash LED to indicate completion
-  for(int i = 0; i < 3; i++) {
-    digitalWrite(13,HIGH); 
-    delay(1000);
-    digitalWrite(13,LOW);
-    delay(1000);
-  }
-
-  // power cycle now
 
   // wait for prompt to start
-  while (buf[1] != '\t')
-    Serial.readBytes(buf, 2);
+delay(1000);
+Serial.println("Press any key to begin. ");
+while (Serial.available() == 0) ;
+while(Serial.available() != 0 ) {
+    Serial.read();
+}
+
 }
 
 void quit() {
-  Serial.println(4);
-
-  // LED 
-  for (int i = 200; i > 0; i--) {
-    float DC = i / 200.0;
-    digitalWrite(13, 1);
-    delayMicroseconds(floor(2000 * DC));
-    digitalWrite(13, 0);
-    delayMicroseconds(floor(2000 * (1 - DC)));
-  }
+  Serial.println("Quitting program...");
 
   // decelerating motors
   int dp[4];
@@ -241,14 +289,15 @@ void quit() {
   }
 
   // detach motors and Serial just in case
-  Serial.println(5);
+  Serial.println("Detaching motors. ");
   for (int i = 0; i < 4; i++) { 
     allMotors[i].motor.detach();
   }
+  Serial.println("Successfully quit. ");
   Serial.end();
+  while (1) ;
 
   // sleep forever until restart
-  // LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 }
 
 void displayAllMotors() {
