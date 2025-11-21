@@ -39,3 +39,4 @@ fp-info-cache
 
 # lck files
 *.lck
+/.vs
